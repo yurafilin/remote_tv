@@ -2,12 +2,11 @@ import 'package:bonsoir/bonsoir.dart';
 
 import '../../discovered_device.dart';
 
-/// mDNS / Bonjour discovery for Samsung TVs (`_samsungmsf._tcp`).
-///
-/// Uses the system Bonjour stack (NWBrowser on iOS, NsdManager on Android), so
-/// it works without the multicast entitlement that raw SSDP needs on iOS.
-class SamsungMdnsDiscovery {
-  static const String _serviceType = '_samsungmsf._tcp';
+/// mDNS / Bonjour discovery for Android TV / Google TV devices
+/// (`_androidtvremote2._tcp`) — Sony, Philips, TCL, Hisense, Nvidia Shield,
+/// Chromecast with Google TV. Entitlement-free via the system Bonjour stack.
+class AndroidTvDiscovery {
+  static const String _serviceType = '_androidtvremote2._tcp';
 
   Future<List<DiscoveredDevice>> discover({
     Duration timeout = const Duration(seconds: 4),
@@ -28,8 +27,8 @@ class SamsungMdnsDiscovery {
                 host,
                 () => DiscoveredDevice(
                   host: host,
-                  platform: DevicePlatform.samsung,
-                  name: 'Samsung TV',
+                  platform: DevicePlatform.androidTv,
+                  name: service.name,
                 ),
               );
             }

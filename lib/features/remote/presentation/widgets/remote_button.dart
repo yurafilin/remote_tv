@@ -6,20 +6,22 @@ import '../../../../core/remote/keys.dart';
 import '../remote_controller.dart';
 import 'remote_style.dart';
 
-/// A round, Apple-remote-style key. Dimmed and inert when the connected
-/// device doesn't advertise [remoteKey].
+/// A round, Apple-remote-style key showing an [icon] or a text [label].
+/// Dimmed and inert when the connected device doesn't advertise [remoteKey].
 class RemoteButton extends ConsumerStatefulWidget {
   const RemoteButton({
-    required this.icon,
     required this.remoteKey,
+    this.icon,
+    this.label,
     this.size = 88,
     this.iconSize = 32,
     this.glow = false,
     this.tooltip,
     super.key,
-  });
+  }) : assert(icon != null || label != null, 'Provide an icon or a label');
 
-  final IconData icon;
+  final IconData? icon;
+  final String? label;
   final RemoteKey remoteKey;
   final double size;
   final double iconSize;
@@ -44,6 +46,7 @@ class _RemoteButtonState extends ConsumerState<RemoteButton> {
       if (enabled && value != _pressed) setState(() => _pressed = value);
     }
 
+    final label = widget.label;
     return Semantics(
       button: true,
       enabled: enabled,
@@ -79,11 +82,20 @@ class _RemoteButtonState extends ConsumerState<RemoteButton> {
                 border: RemoteStyle.hairline,
                 boxShadow: widget.glow ? RemoteStyle.glow : RemoteStyle.lift,
               ),
-              child: Icon(
-                widget.icon,
-                color: RemoteStyle.icon,
-                size: widget.iconSize,
-              ),
+              child: label != null
+                  ? Text(
+                      label,
+                      style: TextStyle(
+                        color: RemoteStyle.icon,
+                        fontSize: widget.size * 0.36,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  : Icon(
+                      widget.icon,
+                      color: RemoteStyle.icon,
+                      size: widget.iconSize,
+                    ),
             ),
           ),
         ),

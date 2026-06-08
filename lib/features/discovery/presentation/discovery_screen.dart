@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/remote/discovered_device.dart';
+import '../../../core/remote/remote_store.dart';
+import '../../../core/remote/wake_on_lan.dart';
 import '../../remote/presentation/remote_controller.dart';
 import '../../remote/presentation/remote_screen.dart';
 import '../domain/discovery_state.dart';
@@ -14,7 +16,16 @@ class DiscoveryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(discoveryControllerProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Find your TV')),
+      appBar: AppBar(
+        title: const Text('Find your TV'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_link),
+            tooltip: 'Add by IP',
+            onPressed: () => _addByIp(context, ref),
+          ),
+        ],
+      ),
       body: switch (state) {
         DiscoveryIdle() => const _Idle(),
         DiscoveryScanning() => const _Scanning(),
@@ -30,11 +41,32 @@ class _Idle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final last = ref.watch(remoteStoreProvider).loadLastDevice();
     return Center(
-      child: FilledButton.icon(
-        onPressed: () => ref.read(discoveryControllerProvider.notifier).scan(),
-        icon: const Icon(Icons.wifi_find),
-        label: const Text('Scan network'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (last != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Card(
+                child: ListTile(
+                  leading: const Icon(Icons.tv),
+                  title: Text(last.label),
+                  subtitle: Text(last.sublabel),
+                  onTap: () => _connect(context, ref, last),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+          FilledButton.icon(
+            onPressed: () =>
+                ref.read(discoveryControllerProvider.notifier).scan(),
+            icon: const Icon(Icons.wifi_find),
+            label: Text(last == null ? 'Scan network' : 'Scan for other TVs'),
+          ),
+        ],
       ),
     );
   }
@@ -98,8 +130,8 @@ class _DeviceList extends ConsumerWidget {
         return Card(
           child: ListTile(
             leading: const Icon(Icons.tv),
-            title: Text(device.name ?? _platformLabel(device.platform)),
-            subtitle: Text(device.host),
+            title: Text(device.label),
+            subtitle: Text(device.sublabel),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _connect(context, ref, device),
           ),
@@ -109,16 +141,6 @@ class _DeviceList extends ConsumerWidget {
   }
 }
 
-String _platformLabel(DevicePlatform platform) => switch (platform) {
-      DevicePlatform.roku => 'Roku',
-      DevicePlatform.samsung => 'Samsung TV',
-      DevicePlatform.lg => 'LG TV',
-      DevicePlatform.androidTv => 'Android TV',
-      DevicePlatform.vizio => 'Vizio',
-      DevicePlatform.dlna => 'Media device',
-      DevicePlatform.unknown => 'TV',
-    };
-
 Future<void> _connect(
   BuildContext context,
   WidgetRef ref,
@@ -126,24 +148,44 @@ Future<void> _connect(
 ) async {
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
+  final notifier = ref.read(remoteControllerProvider.notifier);
   showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => const _ConnectingDialog(),
   );
   try {
-    await ref.read(remoteControllerProvider.notifier).connect(device);
+    await notifier.connect(device);
   } catch (_) {
-    navigator.pop();
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Could not connect to the TV')),
-    );
-    return;
+    // The TV may be off — try Wake-on-LAN with a saved MAC, then retry once.
+    final mac = ref.read(remoteStoreProvider).mac(device.host);
+    if (mac == null || !await _wakeAndRetry(notifier, device, mac)) {
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not connect to the TV')),
+      );
+      return;
+    }
   }
   navigator.pop();
   navigator.push(
     MaterialPageRoute<void>(builder: (_) => const RemoteScreen()),
   );
+}
+
+Future<bool> _wakeAndRetry(
+  RemoteController notifier,
+  DiscoveredDevice device,
+  String mac,
+) async {
+  await WakeOnLan.send(mac, ip: device.host);
+  await Future<void>.delayed(const Duration(seconds: 5));
+  try {
+    await notifier.connect(device);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 class _ConnectingDialog extends ConsumerWidget {
@@ -159,6 +201,89 @@ class _ConnectingDialog extends ConsumerWidget {
           Expanded(child: Text('Connecting…\nIf prompted, allow on your TV.')),
         ],
       ),
+    );
+  }
+}
+
+Future<void> _addByIp(BuildContext context, WidgetRef ref) async {
+  final device = await showDialog<DiscoveredDevice>(
+    context: context,
+    builder: (_) => const _AddByIpDialog(),
+  );
+  if (device != null && context.mounted) {
+    await _connect(context, ref, device);
+  }
+}
+
+class _AddByIpDialog extends ConsumerStatefulWidget {
+  const _AddByIpDialog();
+
+  @override
+  ConsumerState<_AddByIpDialog> createState() => _AddByIpDialogState();
+}
+
+class _AddByIpDialogState extends ConsumerState<_AddByIpDialog> {
+  final _controller = TextEditingController();
+  DevicePlatform _platform = DevicePlatform.samsung;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final host = _controller.text.trim();
+    if (host.isEmpty) return;
+    Navigator.pop(context, DiscoveredDevice(host: host, platform: _platform));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add TV by IP'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'TV IP address',
+              hintText: '192.168.1.42',
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 16),
+          DropdownButton<DevicePlatform>(
+            value: _platform,
+            isExpanded: true,
+            items: const [
+              DropdownMenuItem(
+                value: DevicePlatform.samsung,
+                child: Text('Samsung'),
+              ),
+              DropdownMenuItem(
+                value: DevicePlatform.roku,
+                child: Text('Roku'),
+              ),
+              DropdownMenuItem(
+                value: DevicePlatform.lg,
+                child: Text('LG'),
+              ),
+            ],
+            onChanged: (value) =>
+                setState(() => _platform = value ?? _platform),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Connect')),
+      ],
     );
   }
 }

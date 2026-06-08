@@ -71,6 +71,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_samsungmsf._tcp</string>
+		<string>_androidtvremote2._tcp</string>
 		<string>_airplay._tcp</string>
 		<string>_googlecast._tcp</string>
 	</array>

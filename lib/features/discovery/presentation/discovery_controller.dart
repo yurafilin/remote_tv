@@ -17,10 +17,12 @@ class DiscoveryController extends Notifier<DiscoveryState> {
 
   Future<void> scan() async {
     state = const DiscoveryScanning();
+    // Android TV is omitted until its driver can actually connect (stage 1);
+    // each scan is wrapped so one transport failing never aborts the rest.
     final results = await Future.wait([
-      RokuDiscovery().discover(),
-      SamsungDiscovery().discover(),
-      SamsungMdnsDiscovery().discover(),
+      RokuDiscovery().discover().catchError((_) => <DiscoveredDevice>[]),
+      SamsungDiscovery().discover().catchError((_) => <DiscoveredDevice>[]),
+      SamsungMdnsDiscovery().discover().catchError((_) => <DiscoveredDevice>[]),
     ]);
     final byHost = <String, DiscoveredDevice>{};
     for (final device in results.expand((devices) => devices)) {

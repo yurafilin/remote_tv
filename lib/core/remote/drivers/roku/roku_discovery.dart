@@ -32,28 +32,37 @@ class RokuDiscovery {
 
     try {
       socket.multicastHops = 2;
-      socket.listen((event) {
-        if (event != RawSocketEvent.read) return;
-        final datagram = socket.receive();
-        if (datagram == null) return;
-        final text = utf8.decode(datagram.data, allowMalformed: true);
-        if (!text.toLowerCase().contains('roku')) return;
-        final host = datagram.address.address;
-        found.putIfAbsent(
-          host,
-          () => DiscoveredDevice(
-            host: host,
-            platform: DevicePlatform.roku,
-            location: _header(text, 'LOCATION'),
-          ),
-        );
-      });
+      socket.listen(
+        (event) {
+          if (event != RawSocketEvent.read) return;
+          final datagram = socket.receive();
+          if (datagram == null) return;
+          final text = utf8.decode(datagram.data, allowMalformed: true);
+          if (!text.toLowerCase().contains('roku')) return;
+          final host = datagram.address.address;
+          found.putIfAbsent(
+            host,
+            () => DiscoveredDevice(
+              host: host,
+              platform: DevicePlatform.roku,
+              location: _header(text, 'LOCATION'),
+            ),
+          );
+        },
+        // iOS delivers the blocked-multicast error through the socket stream;
+        // swallow it so the scan doesn't crash.
+        onError: (Object _) {},
+        cancelOnError: false,
+      );
 
-      socket.send(message, InternetAddress(_ssdpAddr), _ssdpPort);
+      try {
+        socket.send(message, InternetAddress(_ssdpAddr), _ssdpPort);
+      } catch (_) {
+        // iOS blocks LAN multicast without the multicast entitlement.
+      }
       await Future<void>.delayed(timeout);
-    } on SocketException {
-      // iOS blocks LAN multicast without the Local Network permission and the
-      // multicast entitlement — surface as "nothing found" instead of crashing.
+    } catch (_) {
+      // Any other discovery failure — return what was collected.
     } finally {
       socket.close();
     }

@@ -46,4 +46,22 @@ void main() {
     expect(find.text('Living Room TV'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('more-buttons sheet shows the number pad and channel', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [remoteControllerProvider.overrideWith(_FakeController.new)],
+        child: const MaterialApp(home: RemoteScreen()),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('More buttons'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Channel'), findsOneWidget);
+    expect(find.text('5'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
