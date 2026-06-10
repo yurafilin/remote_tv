@@ -47,7 +47,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('more-buttons sheet shows the number pad and channel', (
+  testWidgets('123 opens the controls sheet with the number pad', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -57,7 +57,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('More buttons'));
+    await tester.tap(find.text('123'));
     await tester.pumpAndSettle();
 
     expect(find.text('Channel'), findsOneWidget);

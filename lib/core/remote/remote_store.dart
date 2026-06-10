@@ -59,4 +59,12 @@ class RemoteStore {
 
   Future<void> saveMac(String host, String mac) =>
       _prefs.setString('$_macPrefix$host', mac);
+
+  /// Forget a device: drop it as the last device (if it is) and clear its
+  /// saved pairing token and MAC.
+  Future<void> forget(String host) async {
+    if (loadLastDevice()?.host == host) await clearLastDevice();
+    await _prefs.remove('$_tokenPrefix$host');
+    await _prefs.remove('$_macPrefix$host');
+  }
 }

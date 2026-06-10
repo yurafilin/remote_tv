@@ -1,19 +1,15 @@
 import '../../../core/remote/discovered_device.dart';
 
-sealed class DiscoveryState {
-  const DiscoveryState();
-}
-
-class DiscoveryIdle extends DiscoveryState {
-  const DiscoveryIdle();
-}
-
-class DiscoveryScanning extends DiscoveryState {
-  const DiscoveryScanning();
-}
-
-class DiscoveryResults extends DiscoveryState {
-  const DiscoveryResults(this.devices);
+class DiscoveryState {
+  const DiscoveryState({this.devices = const [], this.scanning = false});
 
   final List<DiscoveredDevice> devices;
+  final bool scanning;
+
+  DiscoveryState copyWith({List<DiscoveredDevice>? devices, bool? scanning}) {
+    return DiscoveryState(
+      devices: devices ?? this.devices,
+      scanning: scanning ?? this.scanning,
+    );
+  }
 }

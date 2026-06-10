@@ -15,6 +15,7 @@ class SamsungDiscovery {
 
   Future<List<DiscoveredDevice>> discover({
     Duration timeout = const Duration(seconds: 3),
+    void Function(DiscoveredDevice)? onDevice,
   }) async {
     final message = utf8.encode(
       'M-SEARCH * HTTP/1.1\r\n'
@@ -42,14 +43,15 @@ class SamsungDiscovery {
           final text = utf8.decode(datagram.data, allowMalformed: true);
           if (!text.toLowerCase().contains('samsung')) return;
           final host = datagram.address.address;
-          found.putIfAbsent(
-            host,
-            () => DiscoveredDevice(
+          found.putIfAbsent(host, () {
+            final device = DiscoveredDevice(
               host: host,
               platform: DevicePlatform.samsung,
               name: 'Samsung TV',
-            ),
-          );
+            );
+            onDevice?.call(device);
+            return device;
+          });
         },
         // iOS delivers the blocked-multicast error through the socket stream;
         // swallow it so the scan doesn't crash.

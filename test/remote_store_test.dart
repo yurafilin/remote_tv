@@ -27,4 +27,24 @@ void main() {
     await store.clearLastDevice();
     expect(store.loadLastDevice(), isNull);
   });
+
+  test('forget clears the last device, token and MAC for a host', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = RemoteStore(await SharedPreferences.getInstance());
+
+    const device = DiscoveredDevice(
+      host: '10.0.0.7',
+      platform: DevicePlatform.samsung,
+      name: 'Frame 75',
+    );
+    await store.saveLastDevice(device);
+    await store.saveToken('10.0.0.7', 'tok');
+    await store.saveMac('10.0.0.7', 'AA:BB:CC:DD:EE:FF');
+
+    await store.forget('10.0.0.7');
+
+    expect(store.loadLastDevice(), isNull);
+    expect(store.token('10.0.0.7'), isNull);
+    expect(store.mac('10.0.0.7'), isNull);
+  });
 }

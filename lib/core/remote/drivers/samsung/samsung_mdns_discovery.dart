@@ -11,6 +11,7 @@ class SamsungMdnsDiscovery {
 
   Future<List<DiscoveredDevice>> discover({
     Duration timeout = const Duration(seconds: 4),
+    void Function(DiscoveredDevice)? onDevice,
   }) async {
     final found = <String, DiscoveredDevice>{};
     final discovery = BonsoirDiscovery(type: _serviceType);
@@ -24,14 +25,15 @@ class SamsungMdnsDiscovery {
           case BonsoirDiscoveryServiceResolvedEvent(:final service):
             final host = service.hostAddress ?? service.hostname;
             if (host != null) {
-              found.putIfAbsent(
-                host,
-                () => DiscoveredDevice(
+              found.putIfAbsent(host, () {
+                final device = DiscoveredDevice(
                   host: host,
                   platform: DevicePlatform.samsung,
                   name: 'Samsung TV',
-                ),
-              );
+                );
+                onDevice?.call(device);
+                return device;
+              });
             }
           default:
             break;
