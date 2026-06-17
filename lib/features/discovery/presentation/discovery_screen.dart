@@ -16,160 +16,239 @@ class DiscoveryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(discoveryControllerProvider);
     final last = ref.watch(remoteStoreProvider).loadLastDevice();
-    final discovered =
-        state.devices.where((d) => d.host != last?.host).toList();
+    final devices = <DiscoveredDevice>[
+      ?last,
+      ...state.devices.where((d) => d.host != last?.host),
+    ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Find your TV'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_link),
-            tooltip: 'Add by IP',
-            onPressed: () => _addByIp(context, ref),
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              const Text(
+                'Connect your TV',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'To continue please select your Smart TV from the list below',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white, fontSize: 17, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: _DeviceListCard(
+                  devices: devices,
+                  scanning: state.scanning,
+                  lastHost: last?.host,
+                ),
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _addByIp(context, ref),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    'Add TV by IP',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeviceListCard extends ConsumerWidget {
+  const _DeviceListCard({
+    required this.devices,
+    required this.scanning,
+    required this.lastHost,
+  });
+
+  final List<DiscoveredDevice> devices;
+  final bool scanning;
+  final String? lastHost;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const line = Divider(
+      height: 1,
+      thickness: 1,
+      color: Color(0x14FFFFFF),
+      indent: 24,
+      endIndent: 24,
+    );
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF26262B), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0x14FFFFFF)),
+      ),
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Text(
+              'Make sure your device is active and connected to the same WiFi '
+              'network as your phone or tablet',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white38, fontSize: 14, height: 1.4),
+            ),
+          ),
+          line,
+          Expanded(
+            child: devices.isEmpty
+                ? _EmptyState(scanning: scanning)
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: devices.length,
+                    separatorBuilder: (_, _) => line,
+                    itemBuilder: (_, i) => _DeviceRow(
+                      device: devices[i],
+                      isLast: devices[i].host == lastHost,
+                    ),
+                  ),
+          ),
+          line,
+          _RefreshButton(scanning: scanning),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.only(top: 8, bottom: 24),
-        children: [
-          if (last != null) ...[
-            const _SectionHeader('Last connection'),
-            Dismissible(
-              key: ValueKey('forget:${last.host}'),
-              direction: DismissDirection.endToStart,
-              background: const _ForgetBackground(),
-              onDismissed: (_) =>
-                  ref.read(remoteStoreProvider).forget(last.host),
-              child: _DeviceCard(device: last),
-            ),
-          ],
-          _SectionHeader('Devices', busy: state.scanning),
-          for (final device in discovered) _DeviceCard(device: device),
-          if (discovered.isEmpty && !state.scanning)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Text(
-                'No other TVs found on this network.',
-                style: TextStyle(color: Colors.white38),
+    );
+  }
+}
+
+class _DeviceRow extends ConsumerWidget {
+  const _DeviceRow({required this.device, required this.isLast});
+
+  final DiscoveredDevice device;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      onTap: () => _connect(context, ref, device),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    device.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isLast ? 'Last used' : 'New',
+                    style: const TextStyle(color: Colors.white38, fontSize: 14),
+                  ),
+                ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends ConsumerWidget {
-  const _SectionHeader(this.title, {this.busy = false});
-
-  final String title;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white54, fontSize: 14),
-          ),
-          if (busy) ...[
-            const SizedBox(width: 10),
-            const CupertinoActivityIndicator(radius: 8, color: Colors.white54),
+            const Icon(Icons.chevron_right, color: Colors.white38),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.scanning});
+
+  final bool scanning;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (scanning) ...[
+            const CupertinoActivityIndicator(radius: 12, color: Colors.white38),
+            const SizedBox(height: 12),
+            const Text(
+              'Searching for TVs…',
+              style: TextStyle(color: Colors.white38, fontSize: 14),
+            ),
+          ] else
+            const Text(
+              'No TVs found on this network',
+              style: TextStyle(color: Colors.white38, fontSize: 14),
+            ),
         ],
       ),
     );
   }
 }
 
-class _ForgetBackground extends ConsumerWidget {
-  const _ForgetBackground();
+class _RefreshButton extends ConsumerWidget {
+  const _RefreshButton({required this.scanning});
+
+  final bool scanning;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
+    return InkWell(
+      onTap: () => ref.read(discoveryControllerProvider.notifier).scan(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.delete_outline, color: Colors.white),
-            SizedBox(width: 8),
-            Text(
-              'Forget',
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: scanning
+                  ? const CupertinoActivityIndicator(
+                      radius: 10,
+                      color: Colors.white,
+                    )
+                  : const Icon(Icons.refresh, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Refresh',
               style: TextStyle(
                 color: Colors.white,
+                fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DeviceCard extends ConsumerWidget {
-  const _DeviceCard({required this.device});
-
-  final DiscoveredDevice device;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
-        color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(14),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _connect(context, ref, device),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                const Icon(Icons.tv_outlined, color: Colors.white, size: 30),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        device.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        device.sublabel,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: Colors.white38),
-              ],
-            ),
-          ),
         ),
       ),
     );

@@ -1,6 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Talk to TVs over the local Wi-Fi (HTTP / WebSocket / Wake-on-LAN UDP)
+         and discover them via mDNS / SSDP multicast. INTERNET is required for
+         the release build (debug/profile add it automatically, release does not). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+
     <application
-        android:label="remote_tv"
+        android:label="Clikr"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -30,6 +38,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Facebook App Events. App ID + Client Token are referenced from
+             strings.xml so they are read as strings (a raw numeric App ID
+             breaks the SDK). -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

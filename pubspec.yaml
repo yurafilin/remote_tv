@@ -38,6 +38,12 @@ dependencies:
   bonsoir: ^7.1.1
   shared_preferences: ^2.5.5
   basic_utils: ^5.8.2
+  app_tracking_transparency: ^2.0.7
+  adjust_sdk: ^5.6.2
+  apphud: ^3.2.4
+  facebook_app_events: ^0.30.0
+  path_provider: ^2.1.5
+  collection: ^1.19.1
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +75,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/onboarding/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

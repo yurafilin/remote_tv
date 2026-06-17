@@ -1,0 +1,45 @@
+PODS:
+  - Adjust (5.6.2):
+    - Adjust/Adjust (= 5.6.2)
+  - Adjust/Adjust (5.6.2):
+    - AdjustSignature (= 3.67.0)
+  - adjust_sdk (5.6.2):
+    - Adjust (= 5.6.2)
+    - Flutter
+  - AdjustSignature (3.67.0)
+  - apphud (3.2.4):
+    - ApphudSDK (= 4.2.3)
+    - Flutter
+  - ApphudSDK (4.2.3)
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - adjust_sdk (from `.symlinks/plugins/adjust_sdk/ios`)
+  - apphud (from `.symlinks/plugins/apphud/ios`)
+  - Flutter (from `Flutter`)
+
+SPEC REPOS:
+  trunk:
+    - Adjust
+    - AdjustSignature
+    - ApphudSDK
+
+EXTERNAL SOURCES:
+  adjust_sdk:
+    :path: ".symlinks/plugins/adjust_sdk/ios"
+  apphud:
+    :path: ".symlinks/plugins/apphud/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  Adjust: 62ea53a252534df416676e7ac2f1558d60e6e39e
+  adjust_sdk: 676568f5b87c5fdc390bd061af146e5dd4558dad
+  AdjustSignature: 9498705a4ac67b719e31828be4d74fbb8656950c
+  apphud: 19a0fecdb2a2d6309b5b974f78476c183812afee
+  ApphudSDK: d8f9cebd97e00ec039437eec7c3c59d64c3a1f79
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+
+PODFILE CHECKSUM: af5372f32d9b28626d4e07920b68aa6fef70a1e2
+
+COCOAPODS: 1.16.2

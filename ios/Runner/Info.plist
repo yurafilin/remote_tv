@@ -35,6 +35,29 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Remote TV discovers and controls TVs on your local Wi-Fi network.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Allow tracking so we can measure advertising performance and show you more relevant ads. Your data is not sold.</string>
+	<!-- Facebook App Events (App ID + client-safe Client Token from the Meta app
+	     dashboard). Never put the App Secret here. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fb2015498712430862</string>
+			</array>
+		</dict>
+	</array>
+	<key>FacebookAppID</key>
+	<string>2015498712430862</string>
+	<key>FacebookClientToken</key>
+	<string>26b830de55f8475fb5ba6d79ca626337</string>
+	<key>FacebookDisplayName</key>
+	<string>Clikr</string>
+	<key>FacebookAutoLogAppEventsEnabled</key>
+	<true/>
+	<key>FacebookAdvertiserIDCollectionEnabled</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

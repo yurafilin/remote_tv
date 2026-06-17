@@ -23,6 +23,7 @@ class RemoteStore {
 
   static const String _deviceKey = 'last_device';
   static const String _tokenPrefix = 'samsung_token_';
+  static const String _onboardingKey = 'onboarding_done';
 
   Future<void> saveLastDevice(DiscoveredDevice device) => _prefs.setString(
         _deviceKey,
@@ -47,6 +48,11 @@ class RemoteStore {
   }
 
   Future<void> clearLastDevice() => _prefs.remove(_deviceKey);
+
+  /// Whether the first-launch onboarding has been completed.
+  bool get onboardingDone => _prefs.getBool(_onboardingKey) ?? false;
+
+  Future<void> setOnboardingDone() => _prefs.setBool(_onboardingKey, true);
 
   String? token(String host) => _prefs.getString('$_tokenPrefix$host');
 

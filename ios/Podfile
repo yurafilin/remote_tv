@@ -1,0 +1,75 @@
+platform :ios, '15.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+def patch_apphud_sdk_for_xcode_26_3(ios_dir)
+  # ApphudSDK 4.2.3 references StoreKit APIs shipped with the iOS 26.4 SDK.
+  # Strip those code paths when building with an older Xcode SDK.
+  patches = {
+    File.join(ios_dir, 'Pods/ApphudSDK/Sources/Internal/ApphudAsyncStoreKit.swift') => [
+      [
+        "        if #available(iOS 26.4, macOS 26.4, tvOS 26.4, watchOS 26.4, visionOS 26.4, *) {\n            let isSupported = await product.isCommitmentPlanSupported()\n            if commitmentPlan && isSupported {\n                options.insert(.billingPlanType(.monthly))\n            }\n        }\n",
+        "        // Commitment plan purchase options require iOS 26.4 SDK (patched for Xcode 26.3).\n"
+      ]
+    ],
+    File.join(ios_dir, 'Pods/ApphudSDK/Sources/Internal/ApphudExtensions.swift') => [
+      [
+        "    @available(iOS 26.4, macOS 26.4, tvOS 26.4, watchOS 26.4, visionOS 26.4, *)\n    public func isCommitmentPlanSupported() async -> Bool {\n        if let commitmentTerms = subscription?.pricingTerms.first(where: { $0.billingPlanType == .monthly }) {\n            return commitmentTerms.commitmentInfo.price > 0\n        }\n\n        return false\n    }",
+        "    public func isCommitmentPlanSupported() async -> Bool {\n        false\n    }"
+      ]
+    ]
+  }
+
+  patches.each do |path, replacements|
+    next unless File.exist?(path)
+
+    contents = File.read(path)
+    replacements.each do |from, to|
+      contents = contents.sub(from, to)
+    end
+    # CocoaPods installs pod sources read-only (0444); make writable before patching.
+    File.chmod(0644, path)
+    File.write(path, contents)
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+
+  patch_apphud_sdk_for_xcode_26_3(File.dirname(__FILE__))
+end

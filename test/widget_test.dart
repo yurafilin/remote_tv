@@ -30,22 +30,21 @@ Future<void> _pumpDiscovery(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('discovery screen shows title and the Devices section', (
+  testWidgets('connection screen shows the title and refresh', (
     tester,
   ) async {
     await _pumpDiscovery(tester);
 
-    expect(find.text('Find your TV'), findsOneWidget);
-    expect(find.text('Devices'), findsOneWidget);
+    expect(find.text('Connect your TV'), findsOneWidget);
+    expect(find.text('Refresh'), findsOneWidget);
   });
 
-  testWidgets('add-by-IP dialog opens from the app bar', (tester) async {
+  testWidgets('add-by-IP sheet opens from the bottom link', (tester) async {
     await _pumpDiscovery(tester);
 
-    await tester.tap(find.byTooltip('Add by IP'));
+    await tester.tap(find.text('Add TV by IP'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add TV by IP'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
   });
 }
