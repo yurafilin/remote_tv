@@ -14,8 +14,17 @@ final remoteStoreProvider = Provider<RemoteStore>(
   (ref) => RemoteStore(ref.watch(sharedPreferencesProvider)),
 );
 
-/// Persists the last connected device and per-host Samsung pairing tokens, so
-/// the app can reconnect instantly without re-scanning or re-pairing.
+/// Whether the app launched before onboarding had been completed — i.e. this is
+/// the first-run setup session. Captured once in `main()` (before onboarding
+/// flips the flag) so it stays constant for the whole session; gates the
+/// post-connection "You're all set" screen.
+final firstRunProvider = Provider<bool>(
+  (ref) => throw UnimplementedError('Override firstRunProvider in main()'),
+);
+
+/// Persists the last connected device and per-host pairing credentials (Samsung
+/// tokens, LG client-keys), so the app can reconnect instantly without
+/// re-scanning or re-pairing.
 class RemoteStore {
   RemoteStore(this._prefs);
 
@@ -23,6 +32,7 @@ class RemoteStore {
 
   static const String _deviceKey = 'last_device';
   static const String _tokenPrefix = 'samsung_token_';
+  static const String _lgKeyPrefix = 'lg_key_';
   static const String _onboardingKey = 'onboarding_done';
 
   Future<void> saveLastDevice(DiscoveredDevice device) => _prefs.setString(
@@ -59,6 +69,11 @@ class RemoteStore {
   Future<void> saveToken(String host, String token) =>
       _prefs.setString('$_tokenPrefix$host', token);
 
+  String? lgKey(String host) => _prefs.getString('$_lgKeyPrefix$host');
+
+  Future<void> saveLgKey(String host, String key) =>
+      _prefs.setString('$_lgKeyPrefix$host', key);
+
   static const String _macPrefix = 'mac_';
 
   String? mac(String host) => _prefs.getString('$_macPrefix$host');
@@ -71,6 +86,7 @@ class RemoteStore {
   Future<void> forget(String host) async {
     if (loadLastDevice()?.host == host) await clearLastDevice();
     await _prefs.remove('$_tokenPrefix$host');
+    await _prefs.remove('$_lgKeyPrefix$host');
     await _prefs.remove('$_macPrefix$host');
   }
 }

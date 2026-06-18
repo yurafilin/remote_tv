@@ -241,30 +241,12 @@ class ApphudService {
   }
 }
 
+/// Apphud placement identifiers — must match the Apphud Console exactly. The
+/// app currently ships a single paywall placement.
 enum AppHudPlacementID {
-  onboarding,
-  createAlarm,
-  unlockMission,
-  alarmSounds,
-  addAlarmSound,
-  insightsDetailed,
-}
+  onboarding;
 
-extension AppHudPlacementIDExtension on AppHudPlacementID {
-  String get value {
-    switch (this) {
-      case AppHudPlacementID.onboarding:
-        return 'onboarding';
-      case AppHudPlacementID.createAlarm:
-        return 'create_alarm';
-      case AppHudPlacementID.unlockMission:
-        return 'unlock_mission';
-      case AppHudPlacementID.alarmSounds:
-        return 'alarm_sounds';
-      case AppHudPlacementID.addAlarmSound:
-        return 'add_alarm_sound';
-      case AppHudPlacementID.insightsDetailed:
-        return 'insights_detailed';
-    }
-  }
+  String get value => switch (this) {
+        AppHudPlacementID.onboarding => 'onboarding',
+      };
 }

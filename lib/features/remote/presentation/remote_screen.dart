@@ -32,7 +32,7 @@ const LinearGradient _keyFacePressed = LinearGradient(
 const LinearGradient _keyStroke = LinearGradient(
   begin: Alignment.topCenter,
   end: Alignment.bottomCenter,
-  colors: [Color(0x4DFFFFFF), Color(0x0FFFFFFF), Color(0x05FFFFFF)],
+  colors: [Color(0x33FFFFFF), Color(0x0AFFFFFF), Color(0x05FFFFFF)],
   stops: [0.0, 0.35, 1.0],
 );
 

@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoActivityIndicator;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/remote/apphud/apphud_service.dart';
 import '../../../core/remote/discovered_device.dart';
 import '../../../core/remote/remote_store.dart';
 import '../../../core/remote/wake_on_lan.dart';
+import '../../onboarding/presentation/all_set_screen.dart';
+import '../../paywall/presentation/paywall_screen.dart';
 import '../../remote/presentation/remote_controller.dart';
 import '../../remote/presentation/remote_screen.dart';
 import 'discovery_controller.dart';
@@ -134,7 +139,7 @@ class _DeviceListCard extends ConsumerWidget {
                   ),
           ),
           line,
-          _RefreshButton(scanning: scanning),
+          const _RefreshButton(),
         ],
       ),
     );
@@ -149,8 +154,9 @@ class _DeviceRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final connecting = ref.watch(_connectingHostProvider) == device.host;
     return InkWell(
-      onTap: () => _connect(context, ref, device),
+      onTap: connecting ? null : () => _connect(context, ref, device),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Row(
@@ -178,7 +184,17 @@ class _DeviceRow extends ConsumerWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white38),
+            connecting
+                ? const SizedBox.square(
+                    dimension: 24,
+                    child: Center(
+                      child: CupertinoActivityIndicator(
+                        radius: 10,
+                        color: Colors.white38,
+                      ),
+                    ),
+                  )
+                : const Icon(Icons.chevron_right, color: Colors.white38),
           ],
         ),
       ),
@@ -216,31 +232,20 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _RefreshButton extends ConsumerWidget {
-  const _RefreshButton({required this.scanning});
-
-  final bool scanning;
+  const _RefreshButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       onTap: () => ref.read(discoveryControllerProvider.notifier).scan(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 18),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: scanning
-                  ? const CupertinoActivityIndicator(
-                      radius: 10,
-                      color: Colors.white,
-                    )
-                  : const Icon(Icons.refresh, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 10),
-            const Text(
+            Icon(Icons.refresh, color: Colors.white, size: 22),
+            SizedBox(width: 10),
+            Text(
               'Refresh',
               style: TextStyle(
                 color: Colors.white,
@@ -255,6 +260,20 @@ class _RefreshButton extends ConsumerWidget {
   }
 }
 
+/// Host of the device currently being connected to (null when idle). Drives the
+/// per-row spinner that replaces the chevron while a connection is in progress.
+final _connectingHostProvider =
+    NotifierProvider<_ConnectingHostNotifier, String?>(
+  _ConnectingHostNotifier.new,
+);
+
+class _ConnectingHostNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setHost(String? host) => state = host;
+}
+
 Future<void> _connect(
   BuildContext context,
   WidgetRef ref,
@@ -262,31 +281,85 @@ Future<void> _connect(
 ) async {
   final navigator = Navigator.of(context);
   final messenger = ScaffoldMessenger.of(context);
+  final store = ref.read(remoteStoreProvider);
   final notifier = ref.read(remoteControllerProvider.notifier);
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.7),
-    builder: (_) => const _ConnectingDialog(),
-  );
+  final connecting = ref.read(_connectingHostProvider.notifier);
+  final firstRun = ref.read(firstRunProvider);
+
+  connecting.setHost(device.host);
+
+  // Show the "Grant access" sheet only when the TV will actually prompt for
+  // approval — i.e. it hasn't been paired before. An already-paired Samsung
+  // (saved token) or a Roku (no pairing at all) connects without a prompt, so
+  // the sheet must never appear for them, no matter how long connecting takes.
+  // The short delay also avoids a flash if pairing resolves or fails instantly.
+  var sheetOpen = false;
+  final sheetTimer = _needsApproval(store, device)
+      ? Timer(const Duration(milliseconds: 300), () {
+          if (!context.mounted) return;
+          sheetOpen = true;
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: false,
+            enableDrag: false,
+            backgroundColor: const Color(0xFF1C1C1E),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            builder: (_) => const _GrantAccessSheet(),
+          );
+        })
+      : null;
+
+  var connected = false;
   try {
     await notifier.connect(device);
+    connected = true;
   } catch (_) {
     // The TV may be off — try Wake-on-LAN with a saved MAC, then retry once.
-    final mac = ref.read(remoteStoreProvider).mac(device.host);
-    if (mac == null || !await _wakeAndRetry(notifier, device, mac)) {
-      navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not connect to the TV')),
-      );
-      return;
-    }
+    final mac = store.mac(device.host);
+    connected = mac != null && await _wakeAndRetry(notifier, device, mac);
+  } finally {
+    connecting.setHost(null);
   }
-  navigator.pop();
+
+  sheetTimer?.cancel();
+  if (sheetOpen) navigator.pop();
+
+  if (!connected) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not connect to the TV')),
+    );
+    return;
+  }
+  // First-run setup ends on the "You're all set" screen. Afterwards, go to the
+  // remote — through the paywall first when the user isn't premium.
+  if (firstRun) {
+    navigator.push(
+      MaterialPageRoute<void>(builder: (_) => const AllSetScreen()),
+    );
+    return;
+  }
+  if (!ApphudService.instance.isPremium.value) {
+    await navigator.push(
+      MaterialPageRoute<void>(builder: (_) => const PaywallScreen()),
+    );
+  }
   navigator.push(
     MaterialPageRoute<void>(builder: (_) => const RemoteScreen()),
   );
 }
+
+/// Whether connecting to [device] will trigger an allow/deny prompt on the TV.
+/// Samsung and LG prompt only until their pairing credential (token /
+/// client-key) is saved. Roku needs no pairing at all.
+bool _needsApproval(RemoteStore store, DiscoveredDevice device) =>
+    switch (device.platform) {
+      DevicePlatform.samsung => store.token(device.host) == null,
+      DevicePlatform.lg => store.lgKey(device.host) == null,
+      _ => false,
+    };
 
 Future<bool> _wakeAndRetry(
   RemoteController notifier,
@@ -303,31 +376,75 @@ Future<bool> _wakeAndRetry(
   }
 }
 
-class _ConnectingDialog extends ConsumerWidget {
-  const _ConnectingDialog();
+class _GrantAccessSheet extends StatelessWidget {
+  const _GrantAccessSheet();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CupertinoActivityIndicator(radius: 15, color: Colors.white),
-          SizedBox(height: 20),
-          Text(
-            'Connecting…',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(3),
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'If prompted, allow on your TV',
-            style: TextStyle(color: Colors.white60, fontSize: 15),
-          ),
-        ],
+            const SizedBox(height: 22),
+            const Text(
+              'Grant access',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 22),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                'assets/onboarding/allow_tv.png',
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text.rich(
+              TextSpan(
+                text: 'Please check the confirmation dialog ',
+                children: [
+                  TextSpan(
+                    text: 'on your TV',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(
+                    text: '. You need to allow access to connect the app.',
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 16, height: 1.45),
+            ),
+            const SizedBox(height: 26),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.settings_remote, color: Colors.white54, size: 20),
+                SizedBox(width: 10),
+                Text(
+                  'Waiting for permission...',
+                  style: TextStyle(color: Colors.white54, fontSize: 15),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

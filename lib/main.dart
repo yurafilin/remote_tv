@@ -1,36 +1,35 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'core/remote/adjust/adjust.dart';
-import 'core/remote/apphud/apphud_service.dart';
-import 'core/remote/facebook/facebook_service.dart';
+import 'core/monetization_init.dart';
 import 'core/remote/remote_store.dart';
 import 'core/remote/tracking/idfa_service.dart';
-// ignore: unused_import, kept for the temporarily-disabled gated home (see build()).
 import 'features/discovery/presentation/discovery_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  // Capture first-run state now, before onboarding flips the flag, so the
+  // post-connection "You're all set" screen only shows during the first setup.
+  final firstRun = !RemoteStore(prefs).onboardingDone;
 
   runApp(
     ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        firstRunProvider.overrideWithValue(firstRun),
+      ],
       child: const RemoteTvApp(),
     ),
   );
 
-  // Monetization + attribution SDKs init in the BACKGROUND — they must never
-  // block the first frame. Their network calls can hang for seconds (e.g.
-  // Facebook is unreachable in some regions); the UI renders regardless. Each
-  // init() is guarded internally so failures degrade to no-ops.
-  unawaited(ApphudService.instance.init());
-  unawaited(AdjustService.instance.init());
-  unawaited(FacebookService.instance.init());
+  // First-run users start these SDKs from the onboarding "Allow access" step so
+  // the iOS local-network prompt (an attribution SDK surfaces it during init)
+  // lands there rather than over the first onboarding screen. Returning users
+  // have already granted local-network access, so start them now.
+  if (!firstRun) startMonetizationSdks();
 }
 
 class RemoteTvApp extends ConsumerStatefulWidget {
@@ -65,12 +64,11 @@ class _RemoteTvAppState extends ConsumerState<RemoteTvApp> {
           brightness: Brightness.dark,
         ),
       ),
-      // TEMP (dev): always show onboarding on every launch so it's easy to
-      // iterate on. Before release restore the gated version:
-      //   home: ref.watch(remoteStoreProvider).onboardingDone
-      //       ? const DiscoveryScreen()
-      //       : const OnboardingScreen(),
-      home: const OnboardingScreen(),
+      // First launch shows onboarding; once it's been completed, subsequent
+      // launches go straight to the discovery screen.
+      home: ref.watch(remoteStoreProvider).onboardingDone
+          ? const DiscoveryScreen()
+          : const OnboardingScreen(),
     );
   }
 }

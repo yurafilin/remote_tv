@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ignore: unused_import, kept for setOnboardingDone() (temporarily off in _finish).
+import '../../../core/monetization_init.dart';
 import '../../../core/remote/remote_store.dart';
 import '../../discovery/presentation/discovery_controller.dart';
 import '../../discovery/presentation/discovery_screen.dart';
@@ -58,14 +58,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   /// show the "find devices on local networks" permission prompt. Fire it, then
   /// continue to the next step (discovery also warms up so TVs appear sooner).
   void _requestLocalNetworkAccess() {
+    // Trigger local-network access (the discovery scan) and start the
+    // attribution SDKs here, so the iOS prompts land on this "Allow access"
+    // step rather than at app launch.
     ref.read(discoveryControllerProvider.notifier).scan();
+    startMonetizationSdks();
     _next();
   }
 
   Future<void> _finish() async {
-    // TEMP (dev): don't persist completion while iterating, so the onboarding
-    // keeps showing on every launch. Restore this line before release.
-    // await ref.read(remoteStoreProvider).setOnboardingDone();
+    // Mark onboarding complete so it's skipped on subsequent launches.
+    await ref.read(remoteStoreProvider).setOnboardingDone();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const DiscoveryScreen()),
@@ -107,18 +110,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 'Please make sure your TV is turned on and connected to WiFi '
                 'network',
             layout: _HeroLayout.overlay,
-            actions: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _OnboardingButton(label: 'Continue', onPressed: _goToSetup),
-                const SizedBox(height: 12),
-                _OnboardingButton(
-                  label: 'Later',
-                  onPressed: _finish,
-                  secondary: true,
-                ),
-              ],
-            ),
+            actions: _OnboardingButton(label: 'Continue', onPressed: _goToSetup),
           ),
           _OnboardingPage(
             image: 'assets/onboarding/onboarding_setting_up.png',
@@ -369,23 +361,21 @@ class _OnboardingButton extends StatelessWidget {
   const _OnboardingButton({
     required this.label,
     required this.onPressed,
-    this.secondary = false,
   });
 
   final String label;
   final VoidCallback onPressed;
-  final bool secondary;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 64,
+      height: 72,
       width: double.infinity,
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: secondary ? const Color(0xFF1C1C1E) : Colors.white,
-          foregroundColor: secondary ? Colors.white : Colors.black,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -413,7 +403,7 @@ class _ProgressBar extends StatelessWidget {
     const radius = BorderRadius.all(Radius.circular(16));
     const textStyle = TextStyle(fontSize: 17, fontWeight: FontWeight.w600);
     return SizedBox(
-      height: 64,
+      height: 72,
       width: double.infinity,
       child: Stack(
         children: [

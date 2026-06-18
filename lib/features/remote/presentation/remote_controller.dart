@@ -4,6 +4,7 @@ import '../../../core/remote/app_launcher.dart';
 import '../../../core/remote/discovered_device.dart';
 import '../../../core/remote/driver.dart';
 import '../../../core/remote/driver_factory.dart';
+import '../../../core/remote/drivers/lg/lg_webos_driver.dart';
 import '../../../core/remote/drivers/samsung/samsung_driver.dart';
 import '../../../core/remote/device_info_reporter.dart';
 import '../../../core/remote/keys.dart';
@@ -26,11 +27,18 @@ class RemoteController extends Notifier<RemoteState> {
   Future<void> connect(DiscoveredDevice device) async {
     await _driver?.disconnect();
     final store = ref.read(remoteStoreProvider);
-    final driver = createDriver(device, samsungToken: store.token(device.host));
+    final driver = createDriver(
+      device,
+      samsungToken: store.token(device.host),
+      lgKey: store.lgKey(device.host),
+    );
     await driver.connect();
     if (driver is SamsungDriver) {
       final token = driver.token;
       if (token != null) await store.saveToken(device.host, token);
+    } else if (driver is LgWebosDriver) {
+      final key = driver.clientKey;
+      if (key != null) await store.saveLgKey(device.host, key);
     }
     var resolved = device;
     if (driver is DeviceInfoReporter) {
