@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/remote/app_launcher.dart';
+import '../../../core/remote/apphud/apphud_service.dart';
 import '../../../core/remote/keys.dart';
+import '../../paywall/presentation/paywall_screen.dart';
 import 'remote_controller.dart';
 import 'widgets/remote_button.dart';
 
@@ -393,6 +395,7 @@ class _KeyState extends ConsumerState<_Key> {
           );
 
     void handleTap() {
+      if (!_requirePremium(context, ref)) return;
       HapticFeedback.lightImpact();
       if (remoteKey != null) {
         ref.read(remoteControllerProvider.notifier).press(remoteKey);
@@ -484,6 +487,7 @@ class _RockerState extends ConsumerState<_Rocker> {
         onTapUp: enabled
             ? (_) {
                 setState(() => _pressed = null);
+                if (!_requirePremium(context, ref)) return;
                 ref.read(remoteControllerProvider.notifier).press(key);
               }
             : null,
@@ -615,6 +619,17 @@ class _TouchPadState extends ConsumerState<_TouchPad> {
 
   Widget _chevron(IconData icon, bool active) =>
       Icon(icon, color: active ? Colors.white : Colors.white38, size: 26);
+}
+
+/// Premium gate. Only the touchpad (D-pad + OK) is free — every other control
+/// is premium. Returns true when the action may proceed; otherwise opens the
+/// paywall (after which premium unlocks the buttons live).
+bool _requirePremium(BuildContext context, WidgetRef ref) {
+  if (ref.read(premiumProvider)) return true;
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const PaywallScreen()),
+  );
+  return false;
 }
 
 void _showMore(BuildContext context) {

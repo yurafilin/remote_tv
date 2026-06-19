@@ -33,6 +33,8 @@ class SubscriptionPricing {
     required this.priceText,
     required this.periodLabel,
     required this.perMonthText,
+    required this.amount,
+    required this.currency,
     this.trialLabel,
   });
 
@@ -44,6 +46,12 @@ class SubscriptionPricing {
 
   /// Localised price normalised to one month (e.g. "$3.33").
   final String perMonthText;
+
+  /// Raw price for one billing period, for analytics (FB purchase / subscribe).
+  final double amount;
+
+  /// ISO-4217 currency code (e.g. "USD").
+  final String currency;
 
   /// Trial headline (e.g. "3 days free trial"), or null when there's no trial.
   final String? trialLabel;
@@ -77,6 +85,8 @@ class SubscriptionPricing {
       periodLabel: _periodLabel(unit, count),
       perMonthText:
           _money(symbol, sk.price * _daysInMonth / (unit.days * count)),
+      amount: sk.price,
+      currency: sk.priceLocale.currencyCode ?? '',
       trialLabel: hasTrial
           ? _trialLabel(
               _fromSk(intro.subscriptionPeriod.unit),
@@ -130,6 +140,8 @@ class SubscriptionPricing {
         paid.formattedPrice,
         price * _daysInMonth / (unit.days * count),
       ),
+      amount: price,
+      currency: paid.priceCurrencyCode,
       trialLabel: trial == null ? null : _trialLabelIso(trial),
     );
   }

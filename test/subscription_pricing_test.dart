@@ -101,6 +101,8 @@ void main() {
     expect(p.priceText, r'$9.99');
     expect(p.periodLabel, 'week');
     expect(p.perMonthText, r'$43.44'); // 9.99 * 30.4375 / 7
+    expect(p.amount, 9.99);
+    expect(p.currency, 'USD');
   });
 
   test('iOS yearly without trial derives the monthly price', () {
@@ -128,6 +130,8 @@ void main() {
     expect(p.priceText, r'$4.99');
     expect(p.periodLabel, 'month');
     expect(p.perMonthText, r'$4.99');
+    expect(p.amount, 4.99);
+    expect(p.currency, 'USD');
   });
 
   test('Android weekly without trial keeps the formatted price', () {

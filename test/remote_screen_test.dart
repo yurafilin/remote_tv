@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:remote_tv/core/remote/apphud/apphud_service.dart';
 import 'package:remote_tv/core/remote/discovered_device.dart';
 import 'package:remote_tv/core/remote/keys.dart';
 import 'package:remote_tv/features/remote/domain/remote_state.dart';
@@ -38,7 +39,10 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [remoteControllerProvider.overrideWith(_FakeController.new)],
+        overrides: [
+          remoteControllerProvider.overrideWith(_FakeController.new),
+          premiumProvider.overrideWithValue(true),
+        ],
         child: const MaterialApp(home: RemoteScreen()),
       ),
     );
@@ -52,7 +56,10 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [remoteControllerProvider.overrideWith(_FakeController.new)],
+        overrides: [
+          remoteControllerProvider.overrideWith(_FakeController.new),
+          premiumProvider.overrideWithValue(true),
+        ],
         child: const MaterialApp(home: RemoteScreen()),
       ),
     );

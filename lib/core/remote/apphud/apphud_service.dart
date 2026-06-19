@@ -8,6 +8,7 @@ import 'package:apphud/models/apphud_models/apphud_placement.dart';
 import 'package:apphud/models/apphud_models/apphud_product.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Emergency override: when true, the onboarding/paywall flow is skipped and
@@ -250,3 +251,14 @@ enum AppHudPlacementID {
         AppHudPlacementID.onboarding => 'onboarding',
       };
 }
+
+/// Reactive premium flag, bridged from [ApphudService.isPremium] so widgets can
+/// `ref.watch` it and rebuild on purchase / restore / launch sync. Overridable
+/// in tests via `overrideWithValue`.
+final premiumProvider = Provider<bool>((ref) {
+  final flag = ApphudService.instance.isPremium;
+  void listener() => ref.invalidateSelf();
+  flag.addListener(listener);
+  ref.onDispose(() => flag.removeListener(listener));
+  return flag.value;
+});

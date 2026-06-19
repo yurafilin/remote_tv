@@ -4,6 +4,7 @@ import 'package:apphud/models/apphud_models/apphud_product.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/remote/apphud/apphud_service.dart';
+import '../../../core/remote/facebook/facebook_service.dart';
 import '../domain/subscription_pricing.dart';
 
 /// One purchasable option: the raw Apphud product plus its display pricing.
@@ -50,6 +51,9 @@ final paywallControllerProvider =
     NotifierProvider<PaywallController, PaywallState>(PaywallController.new);
 
 class PaywallController extends Notifier<PaywallState> {
+  /// Whether the Apphud `paywallShown` impression has been reported this run.
+  bool _shown = false;
+
   @override
   PaywallState build() {
     unawaited(_load());
@@ -64,6 +68,12 @@ class PaywallController extends Notifier<PaywallState> {
       try {
         final paywall = await ApphudService.instance
             .fetchPaywall(AppHudPlacementID.onboarding);
+        // Report the impression to Apphud as soon as the paywall is available —
+        // even while its products are still loading — and only once per run.
+        if (paywall != null && !_shown) {
+          _shown = true;
+          unawaited(ApphudService.instance.paywallShown(paywall));
+        }
         final products = paywall?.products ?? const <ApphudProduct>[];
         if (products.isNotEmpty) {
           final options = <SubscriptionOption>[
@@ -71,9 +81,6 @@ class PaywallController extends Notifier<PaywallState> {
               if (SubscriptionPricing.from(product) case final pricing?)
                 SubscriptionOption(product: product, pricing: pricing),
           ];
-          if (paywall != null) {
-            unawaited(ApphudService.instance.paywallShown(paywall));
-          }
           state = state.copyWith(
             loading: false,
             failed: options.isEmpty,
@@ -106,10 +113,30 @@ class PaywallController extends Notifier<PaywallState> {
     final options = state.options;
     if (options.isEmpty || state.purchasing) return false;
     state = state.copyWith(purchasing: true);
-    final ok = await ApphudService.instance
-        .purchaseProduct(options[state.selected].product);
+    final option = options[state.selected];
+    final ok = await ApphudService.instance.purchaseProduct(option.product);
+    if (ok) _reportPurchase(option);
     state = state.copyWith(purchasing: false);
     return ok;
+  }
+
+  /// Forwards a successful purchase to Facebook: a custom
+  /// `trial_or_subscription` event plus the standard Purchase and Subscribe
+  /// events carrying the product's price and currency.
+  void _reportPurchase(SubscriptionOption option) {
+    final pricing = option.pricing;
+    final fb = FacebookService.instance;
+    unawaited(fb.logEvent(FacebookEvents.trialOrSubscription));
+    unawaited(
+      fb.logPurchase(amount: pricing.amount, currency: pricing.currency),
+    );
+    unawaited(
+      fb.logSubscribe(
+        price: pricing.amount,
+        currency: pricing.currency,
+        orderId: option.product.productId,
+      ),
+    );
   }
 
   Future<void> restore() => ApphudService.instance.restorePurchases();
