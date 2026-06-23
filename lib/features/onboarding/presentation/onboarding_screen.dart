@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_review/in_app_review.dart';
 
 import '../../../core/monetization_init.dart';
 import '../../../core/remote/remote_store.dart';
@@ -110,8 +113,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 'Please make sure your TV is turned on and connected to WiFi '
                 'network',
             layout: _HeroLayout.overlay,
-            actions: _OnboardingButton(label: 'Continue', onPressed: _goToSetup),
+            actions: _OnboardingButton(
+              label: 'Continue',
+              // Android shows a "Rate the app" step before setup; iOS jumps
+              // straight to the setup progress.
+              onPressed: Platform.isAndroid ? _next : _goToSetup,
+            ),
           ),
+          if (Platform.isAndroid) _RatePage(onContinue: _goToSetup),
           _OnboardingPage(
             image: 'assets/onboarding/onboarding_setting_up.png',
             title: 'Setting up',
@@ -354,6 +363,103 @@ class _OnboardingPage extends StatelessWidget {
           ],
         ),
     };
+  }
+}
+
+/// Android-only "Help us grow" onboarding step: the monochrome illustration and
+/// a Continue button that triggers the Google Play in-app review.
+class _RatePage extends StatelessWidget {
+  const _RatePage({required this.onContinue});
+
+  final VoidCallback onContinue;
+
+  /// Ask for the Google Play in-app review, then move on regardless of whether
+  /// the rating card was shown (Play decides eligibility / quota).
+  Future<void> _requestReviewThenContinue() async {
+    try {
+      final review = InAppReview.instance;
+      if (await review.isAvailable()) await review.requestReview();
+    } catch (_) {
+      // Review unavailable — proceed anyway.
+    }
+    onContinue();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Stack(
+            children: [
+              Image.asset(
+                'assets/onboarding/onboarding_rate_us.png',
+                width: double.infinity,
+                fit: BoxFit.fitWidth,
+              ),
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black],
+                      stops: [0.72, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Help us grow',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Your feedback helps us improve the app and make it '
+                      'better for everyone',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 56),
+                child: _OnboardingButton(
+                  label: 'Continue',
+                  onPressed: _requestReviewThenContinue,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 

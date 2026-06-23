@@ -53,6 +53,23 @@ class PaywallScreen extends ConsumerWidget {
     }
   }
 
+  /// Hidden tester unlock: tapping the title 3× opens a password sheet. The
+  /// correct password flips premium on and dismisses the paywall — the caller
+  /// then lands on the remote.
+  Future<void> _showUnlock(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final unlocked = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _UnlockSheet(),
+    );
+    if (unlocked == true) navigator.pop(true);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(paywallControllerProvider);
@@ -74,13 +91,16 @@ class PaywallScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
                     child: Column(
                       children: [
-                        const Text(
-                          'Unlock all features',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                        _SecretTap(
+                          onTriggered: () => _showUnlock(context),
+                          child: const Text(
+                            'Unlock all features',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -262,6 +282,150 @@ class _LinkButton extends StatelessWidget {
         textStyle: const TextStyle(fontSize: 13),
       ),
       child: Text(label),
+    );
+  }
+}
+
+/// Counts taps on its child and fires [onTriggered] every [taps]-th tap — the
+/// hidden gesture that opens the tester-unlock sheet.
+class _SecretTap extends StatefulWidget {
+  const _SecretTap({required this.child, required this.onTriggered});
+
+  final Widget child;
+  final VoidCallback onTriggered;
+
+  @override
+  State<_SecretTap> createState() => _SecretTapState();
+}
+
+class _SecretTapState extends State<_SecretTap> {
+  int _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        _count++;
+        if (_count >= 3) {
+          _count = 0;
+          widget.onTriggered();
+        }
+      },
+      child: widget.child,
+    );
+  }
+}
+
+/// Tester-unlock password sheet. Pops `true` once the correct password flips
+/// premium on.
+class _UnlockSheet extends StatefulWidget {
+  const _UnlockSheet();
+
+  @override
+  State<_UnlockSheet> createState() => _UnlockSheetState();
+}
+
+class _UnlockSheetState extends State<_UnlockSheet> {
+  final _controller = TextEditingController();
+  bool _error = false;
+  bool _checking = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _activate() async {
+    setState(() {
+      _error = false;
+      _checking = true;
+    });
+    final ok =
+        await ApphudService.instance.attemptTesterUnlock(_controller.text);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _error = true;
+        _checking = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter password to unlock premium',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                onSubmitted: (_) => _activate(),
+                decoration: InputDecoration(
+                  hintText: 'Password',
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  errorText: _error ? 'Password is incorrect' : null,
+                  filled: true,
+                  fillColor: const Color(0xFF111113),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0x1FFFFFFF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white54),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 56,
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _checking ? null : _activate,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    disabledBackgroundColor: const Color(0xFF2A2A2E),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: _checking
+                      ? const CupertinoActivityIndicator(color: Colors.black)
+                      : const Text('Activate'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

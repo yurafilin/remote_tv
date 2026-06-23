@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:apphud/models/apphud_models/apphud_product.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/remote/apphud/apphud_service.dart';
@@ -76,6 +77,7 @@ class PaywallController extends Notifier<PaywallState> {
         }
         final products = paywall?.products ?? const <ApphudProduct>[];
         if (products.isNotEmpty) {
+          _logProducts(products);
           final options = <SubscriptionOption>[
             for (final product in products)
               if (SubscriptionPricing.from(product) case final pricing?)
@@ -95,6 +97,28 @@ class PaywallController extends Notifier<PaywallState> {
       await Future<void>.delayed(const Duration(seconds: 1));
     }
     state = state.copyWith(loading: false, failed: true);
+  }
+
+  /// Debug-only: dumps each product's store offers and pricing phases so you
+  /// can verify in logcat whether Google Play returns the free-trial offer
+  /// (look for `offerId=3-days-free` with a `P3D=0` phase).
+  void _logProducts(List<ApphudProduct> products) {
+    if (!kDebugMode) return;
+    for (final p in products) {
+      final pd = p.productDetails;
+      if (pd == null) {
+        debugPrint('[paywall] ${p.productId}: iOS (skProduct)');
+        continue;
+      }
+      final offers = pd.subscriptionOfferDetails ?? const [];
+      debugPrint('[paywall] ${p.productId}: ${offers.length} offer(s)');
+      for (final o in offers) {
+        final phases = o.pricingPhases
+            .map((ph) => '${ph.billingPeriod}=${ph.priceAmountMicros}')
+            .join(', ');
+        debugPrint('  offerId=${o.offerId} basePlan=${o.basePlanId} [$phases]');
+      }
+    }
   }
 
   void select(int index) {

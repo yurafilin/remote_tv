@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,6 +50,7 @@ class _RemoteTvAppState extends ConsumerState<RemoteTvApp> {
     // settle into the active state before the prompt; on authorize the IDFA is
     // forwarded to Apphud.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!Platform.isIOS) return; // App Tracking Transparency is iOS-only.
       await Future<void>.delayed(const Duration(milliseconds: 200));
       await IDFAService().getIdfa();
     });
