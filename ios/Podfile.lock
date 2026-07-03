@@ -7,38 +7,89 @@ PODS:
     - Adjust (= 5.6.2)
     - Flutter
   - AdjustSignature (3.67.0)
+  - app_tracking_transparency (0.0.1):
+    - Flutter
   - apphud (3.2.4):
     - ApphudSDK (= 4.2.3)
     - Flutter
   - ApphudSDK (4.2.3)
+  - bonsoir_darwin (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - facebook_app_events (0.30.0):
+    - FBSDKCoreKit (~> 18.0)
+    - Flutter
+  - FBAEMKit (18.0.3):
+    - FBSDKCoreKit_Basics (= 18.0.3)
+  - FBSDKCoreKit (18.0.3):
+    - FBAEMKit (= 18.0.3)
+    - FBSDKCoreKit_Basics (= 18.0.3)
+  - FBSDKCoreKit_Basics (18.0.3)
   - Flutter (1.0.0)
+  - in_app_review (2.0.0):
+    - Flutter
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - adjust_sdk (from `.symlinks/plugins/adjust_sdk/ios`)
+  - app_tracking_transparency (from `.symlinks/plugins/app_tracking_transparency/ios`)
   - apphud (from `.symlinks/plugins/apphud/ios`)
+  - bonsoir_darwin (from `.symlinks/plugins/bonsoir_darwin/darwin`)
+  - facebook_app_events (from `.symlinks/plugins/facebook_app_events/ios`)
   - Flutter (from `Flutter`)
+  - in_app_review (from `.symlinks/plugins/in_app_review/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
   trunk:
     - Adjust
     - AdjustSignature
     - ApphudSDK
+    - FBAEMKit
+    - FBSDKCoreKit
+    - FBSDKCoreKit_Basics
 
 EXTERNAL SOURCES:
   adjust_sdk:
     :path: ".symlinks/plugins/adjust_sdk/ios"
+  app_tracking_transparency:
+    :path: ".symlinks/plugins/app_tracking_transparency/ios"
   apphud:
     :path: ".symlinks/plugins/apphud/ios"
+  bonsoir_darwin:
+    :path: ".symlinks/plugins/bonsoir_darwin/darwin"
+  facebook_app_events:
+    :path: ".symlinks/plugins/facebook_app_events/ios"
   Flutter:
     :path: Flutter
+  in_app_review:
+    :path: ".symlinks/plugins/in_app_review/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   Adjust: 62ea53a252534df416676e7ac2f1558d60e6e39e
   adjust_sdk: 676568f5b87c5fdc390bd061af146e5dd4558dad
   AdjustSignature: 9498705a4ac67b719e31828be4d74fbb8656950c
+  app_tracking_transparency: e169b653478da7bb15a6c61209015378ca73e375
   apphud: 19a0fecdb2a2d6309b5b974f78476c183812afee
   ApphudSDK: d8f9cebd97e00ec039437eec7c3c59d64c3a1f79
+  bonsoir_darwin: 722434d059e48f381a3af21440dd79d95cc41c78
+  facebook_app_events: 33c51cd83e085f3d97fa307457d647d0e93494ac
+  FBAEMKit: 2a6b529993713c185b02bc36f8c91129bf78dfb0
+  FBSDKCoreKit: 65d7f7a7d6fcc3aa6eb6e093ec737a4184fc6049
+  FBSDKCoreKit_Basics: 7bc9d8fde8f70985fba2ed7c1d07e319f969a991
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  in_app_review: 436034b18594851a7328d7f1c2ed5ec235b79cfc
+  shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
+  url_launcher_ios: bb13df5870e8c4234ca12609d04010a21be43dfa
 
 PODFILE CHECKSUM: af5372f32d9b28626d4e07920b68aa6fef70a1e2
 

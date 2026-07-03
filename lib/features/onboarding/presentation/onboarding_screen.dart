@@ -9,6 +9,7 @@ import '../../../core/monetization_init.dart';
 import '../../../core/remote/remote_store.dart';
 import '../../discovery/presentation/discovery_controller.dart';
 import '../../discovery/presentation/discovery_screen.dart';
+import '../../paywall/presentation/paywall_screen.dart';
 
 /// Monochrome onboarding shown on first launch: a short intro, the local-network
 /// access explainer, and a "turn on your TV" reminder before the user lands on
@@ -73,7 +74,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     // Mark onboarding complete so it's skipped on subsequent launches.
     await ref.read(remoteStoreProvider).setOnboardingDone();
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
+    final navigator = Navigator.of(context);
+    // End of onboarding: show the paywall. Skip or purchase both land on the
+    // discovery ("Connect your TV") screen.
+    await navigator.push(
+      MaterialPageRoute<void>(builder: (_) => const PaywallScreen()),
+    );
+    if (!mounted) return;
+    navigator.pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const DiscoveryScreen()),
     );
   }
