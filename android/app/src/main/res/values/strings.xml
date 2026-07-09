@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Facebook App Events. The Client Token is a client-safe value (it ships
-         in the app binary); the App Secret must never appear here. -->
-    <string name="facebook_app_id">2015498712430862</string>
-    <string name="facebook_client_token">26b830de55f8475fb5ba6d79ca626337</string>
-    <string name="fb_login_protocol_scheme">fb2015498712430862</string>
+    <!-- Facebook App Events — the Android-specific FB app "Clickr Android"
+         (separate from the iOS FB app configured in Info.plist). The Client
+         Token is a client-safe value (it ships in the app binary); the App
+         Secret must never appear here. -->
+    <string name="facebook_app_id">1566300545173992</string>
+    <string name="facebook_client_token">f18f78db8be6b2d2059e9c72217f17d6</string>
+    <string name="fb_login_protocol_scheme">fb1566300545173992</string>
 </resources>
